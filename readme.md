@@ -289,22 +289,22 @@ classDiagram
 
 ```mermaid
 flowchart TD
-    Start([User opens job in TestingGround])
-    LoadRun([TestRig.testRuns.getById(jobId)])
-    InitData([ComparisonDisplayData.initializeData])
-    CheckFS{Check Firestore for existing results}
-    HydrateFS([Hydrate MobX store from Firestore snapshot])
-    FetchFHIR([Fetch FHIR resources (FhirReader.js)])
-    ParseFHIR([Parse FHIR: patients, obs, conditions, meds])
-    LoadExcel([Load Excel from Firebase Storage])
-    ParseExcel([Parse Excel to JSON, structure data])
-    BuildComparison([Run createComparison (build rows)])
-    PopulateStore([Populate MobX store])
-    PersistCache([Auto-save to Firestore/localStorage])
+    Start(["User opens job in TestingGround"]);
+    LoadRun(["TestRig.testRuns.getById(jobId)"]);
+    InitData(["ComparisonDisplayData.initializeData"]);
+    CheckFS{"Check Firestore for existing results"};
+    HydrateFS(["Hydrate MobX store from Firestore snapshot"]);
+    FetchFHIR(["Fetch FHIR resources (FhirReader.js)"]);
+    ParseFHIR(["Parse FHIR: patients, obs, conditions, meds"]);
+    LoadExcel(["Load Excel from Firebase Storage"]);
+    ParseExcel(["Parse Excel to JSON, structure data"]);
+    BuildComparison(["Run createComparison (build rows)"]);
+    PopulateStore(["Populate MobX store"]);
+    PersistCache(["Auto-save to Firestore/localStorage"]);
 
-    Start --> LoadRun --> InitData --> CheckFS
-    CheckFS -- "Found" --> HydrateFS --> PersistCache
-    CheckFS -- "Not Found" --> FetchFHIR --> ParseFHIR --> LoadExcel --> ParseExcel --> BuildComparison --> PopulateStore --> PersistCache
+    Start --> LoadRun --> InitData --> CheckFS;
+    CheckFS -- "Found" --> HydrateFS --> PersistCache;
+    CheckFS -- "Not Found" --> FetchFHIR --> ParseFHIR --> LoadExcel --> ParseExcel --> BuildComparison --> PopulateStore --> PersistCache;
 ```
 
 ---
