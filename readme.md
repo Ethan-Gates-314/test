@@ -25,6 +25,26 @@ This application orchestrates the retrieval, comparison, and annotation of medic
 
 It leverages **MobX** for state management, supports real-time spreadsheet editing (with Syncfusion), and provides advanced review features including manual match overrides, note-taking with smart referencing, and AI-powered summaries.
 
+### System Component Overview
+
+```mermaid
+flowchart TD
+    UI_index["index.tsx (TestingGround)"]
+    UI_tabman["TabManager"]
+    UI_tabcomp["TabComponents"]
+    UI_tabs["ComparisonTab, ExcelEditorTab, ..."]
+    STATE["ComparisonDisplayData (MobX store)"]
+    FHIRAPI["FhirReader.js (FHIR API)"]
+    EXCEL["Excel (Firebase Storage)"]
+
+    UI_index --> UI_tabman
+    UI_tabman --> UI_tabcomp
+    UI_tabcomp --> UI_tabs
+    UI_tabs <--> STATE
+    STATE --> FHIRAPI
+    STATE --> EXCEL
+```
+
 ---
 
 ## Main Components
@@ -166,54 +186,43 @@ Below you find detailed tables and diagrams representing the key data structures
 | `availablePages`             | number[]                      | List of available pages for filtering                       |
 | `currentPage`                | number                        | Pagination: current page                                    |
 | `itemsPerPage`               | number                        | Pagination: items per page                                  |
-| Other fields...              | ...                           | Many more for fine-grained state and UI control             |
+| ...                          | ...                           | Many more for fine-grained state and UI control             |
 
 ---
 
-### Class Diagram: Core Data Structures
+### Core Data Structure Relationships
 
 ```mermaid
 classDiagram
-    class ComparisonDisplayData {
-        +fileLoaded: boolean
-        +excelData: any
-        +fhirData: any
-        +comparison: ComparisonRow[]
-        +manualOverrides: Record<string, string>
-        +noteHistory: Note[]
-        +loading: boolean
-        +fhirDataLoading: boolean
-        +excelDataLoading: boolean
-        +comparisonLoading: boolean
-        +pageFilter: string
-        +categoryFilter: string
-        +matchStatusFilter: string
-        +availableCategories: string[]
-        +availablePages: number[]
-        +currentPage: number
-        +itemsPerPage: number
-        ...
+    class ComparisonRow {
+      field: string
+      aiData: string
+      aiDataByPage: Array
+      aiPages: number[]
+      correctData: Array
+      match: boolean
+      caseInsensitiveMatch: boolean
+      type: string
+      isBlank: boolean
     }
 
-    class ComparisonRow {
-        +field: string
-        +aiData: string
-        +aiDataByPage: Array<{ value: string; pages: string[] }>
-        +aiPages: number[]
-        +correctData: Array<{ value: string; page?: number; pages?: (number|string)[] }>
-        +match: boolean
-        +caseInsensitiveMatch: boolean
-        +type: string
-        +isBlank: boolean
-    }
-    
     class Note {
-        +id: number
-        +text: string
-        +content: string
-        +data: { [key: string]: any }
-        +timestamp: string
-        +jobId: string
+      id: number
+      text: string
+      content: string
+      data: map
+      timestamp: string
+      jobId: string
+    }
+
+    class ComparisonDisplayData {
+      fileLoaded: boolean
+      excelData: any
+      fhirData: any
+      comparison: ComparisonRow[]
+      manualOverrides: map
+      noteHistory: Note[]
+      loading: boolean
     }
 
     ComparisonDisplayData "1" o-- "*" ComparisonRow
@@ -230,8 +239,6 @@ classDiagram
 
 - Holds all FHIR & Excel data, comparison results, manual overrides, notes, UI state, loading flags, and more.
 - Orchestrates data loading, auto-save, and computed properties for filtering and match state.
-
-See the [ComparisonDisplayData](#class-diagram-core-data-structures) class diagram above for relationships.
 
 ---
 
@@ -283,28 +290,22 @@ See the [ComparisonDisplayData](#class-diagram-core-data-structures) class diagr
 ```mermaid
 flowchart TD
     Start([User opens job in TestingGround])
-    LoadRun[TestRig.testRuns.getById(jobId)]
-    InitData[ComparisonDisplayData.initializeData]
-    CheckFS[Check Firestore for existing results]
-    HydrateFS[Hydrate MobX store from Firestore snapshot]
-    FetchFHIR[Fetch FHIR resources (FhirReader.js)]
-    ParseFHIR[Parse FHIR: patients, obs, conditions, meds]
-    LoadExcel[Load Excel from Firebase Storage]
-    ParseExcel[Parse Excel to JSON, structure data]
-    BuildComparison[Run createComparison (build rows)]
-    PopulateStore[Populate MobX store]
-    PersistCache[Auto-save to Firestore/localStorage]
+    LoadRun([TestRig.testRuns.getById(jobId)])
+    InitData([ComparisonDisplayData.initializeData])
+    CheckFS{Check Firestore for existing results}
+    HydrateFS([Hydrate MobX store from Firestore snapshot])
+    FetchFHIR([Fetch FHIR resources (FhirReader.js)])
+    ParseFHIR([Parse FHIR: patients, obs, conditions, meds])
+    LoadExcel([Load Excel from Firebase Storage])
+    ParseExcel([Parse Excel to JSON, structure data])
+    BuildComparison([Run createComparison (build rows)])
+    PopulateStore([Populate MobX store])
+    PersistCache([Auto-save to Firestore/localStorage])
 
     Start --> LoadRun --> InitData --> CheckFS
-    CheckFS -- Found --> HydrateFS --> PersistCache
-    CheckFS -- Not Found --> FetchFHIR --> ParseFHIR --> LoadExcel --> ParseExcel --> BuildComparison --> PopulateStore --> PersistCache
+    CheckFS -- "Found" --> HydrateFS --> PersistCache
+    CheckFS -- "Not Found" --> FetchFHIR --> ParseFHIR --> LoadExcel --> ParseExcel --> BuildComparison --> PopulateStore --> PersistCache
 ```
-
-**Explanation:**
-- When the page loads, it tries to load comparison data for a given `jobId`.
-- If Firestore has existing results, it hydrates the MobX store from the saved snapshot.
-- Otherwise, it fetches FHIR resources and Excel data, structures them, builds comparison rows, and populates state.
-- The result is persisted for quick reloads (Firestore + localStorage).
 
 ---
 
